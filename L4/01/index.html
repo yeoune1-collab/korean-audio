@@ -130,7 +130,7 @@ body { font-family: 'DM Sans','Noto Sans KR',sans-serif; background: var(--paper
       <div class="audio-controls">
         <button class="play-btn" id="passage-play-btn" onclick="togglePassage()">▶</button>
         <div class="progress-wrap">
-          <div class="progress-bar-bg" id="progress-bg" onclick="seekPassage(event)">
+          <div class="progress-bar-bg" id="progress-bg">
             <div class="progress-bar-fill" id="progress-fill"></div>
           </div>
           <div class="progress-times">
@@ -145,7 +145,7 @@ body { font-family: 'DM Sans','Noto Sans KR',sans-serif; background: var(--paper
         </div>
       </div>
       <div class="passage-lines" id="passage-lines"></div>
-         </div>
+    </div>
   </div>
 
   <!-- VOCAB PANEL -->
@@ -186,11 +186,11 @@ const BASE = 'https://yeoune1-collab.github.io/korean-audio/L4/01/audio';
 // ── PASSAGE DATA ─────────────────────────────────────────────────────────
 // startSec / endSec: update after measuring actual MP3 durations
 const PASSAGE_LINES = [
-  { id:1, text:'한국에서는 카페가',                          src:`${BASE}/passage_01.mp3`, startSec:0,    endSec:3.2  },
-  { id:2, text:'단순히 커피를 마시는 곳이 아닙니다.',          src:`${BASE}/passage_02.mp3`, startSec:3.2,  endSec:7.0  },
-  { id:3, text:'많은 사람들이 자연 풍경이 좋은 카페를 찾습니다.', src:`${BASE}/passage_03.mp3`, startSec:7.0,  endSec:12.5 },
-  { id:4, text:'호수나 강을 바라보며 사진을 찍고',              src:`${BASE}/passage_04.mp3`, startSec:12.5, endSec:16.0 },
-  { id:5, text:'여유로운 시간을 보냅니다.',                    src:`${BASE}/passage_05.mp3`, startSec:16.0, endSec:18.5 },
+  { id:1, text:'한국에서는 카페가',                           src:`${BASE}/passage_01.mp3` },
+  { id:2, text:'단순히 커피를 마시는 곳이 아닙니다.',           src:`${BASE}/passage_02.mp3` },
+  { id:3, text:'많은 사람들이 자연 풍경이 좋은 카페를 찾습니다.', src:`${BASE}/passage_03.mp3` },
+  { id:4, text:'호수나 강을 바라보며 사진을 찍고',               src:`${BASE}/passage_04.mp3` },
+  { id:5, text:'여유로운 시간을 보냅니다.',                     src:`${BASE}/passage_05.mp3` },
 ];
 const PASSAGE_FULL_SRC = `${BASE}/passage_full.mp3`;
 
@@ -206,13 +206,35 @@ const VOCAB = [
   { ko:'바라보며',  en:'while gazing at',  src:`${BASE}/v_바라보며.mp3` },
 ];
 
-// ── PASSAGE PLAYER ────────────────────────────────────────────────────────
-let passageAudio = null;
+// ── PASSAGE PLAYER (sentence-by-sentence mode) ───────────────────────────
+let currentLineIdx = 0;   // index into PASSAGE_LINES
+let lineAudio = null;
+let passagePlaying = false;
+let currentSpeed = 1.0;
+
+// Pre-load durations so progress bar works
+const lineDurations = new Array(PASSAGE_LINES.length).fill(null);
+let totalDuration = 0;
+let durationsLoaded = 0;
+
+function preloadDurations() {
+  PASSAGE_LINES.forEach((l, i) => {
+    const a = new Audio(l.src);
+    a.addEventListener('loadedmetadata', () => {
+      lineDurations[i] = a.duration;
+      durationsLoaded++;
+      if (durationsLoaded === PASSAGE_LINES.length) {
+        totalDuration = lineDurations.reduce((s, d) => s + d, 0);
+        document.getElementById('time-total').textContent = formatTime(totalDuration);
+      }
+    });
+  });
+}
 
 function renderPassageLines() {
   document.getElementById('passage-lines').innerHTML =
     PASSAGE_LINES.map(l =>
-      `<div class="line-row" id="line-${l.id}" onclick="jumpToLine(${l.id})">
+      `<div class="line-row" id="line-${l.id}">
          <span class="line-num">${l.id}.</span>
          <span class="line-text">${l.text}</span>
        </div>`
@@ -220,86 +242,111 @@ function renderPassageLines() {
 }
 
 function togglePassage() {
-  if (!passageAudio) {
-    passageAudio = new Audio(PASSAGE_FULL_SRC);
-    passageAudio.playbackRate = currentSpeed;
-    passageAudio.addEventListener('timeupdate', onPassageTimeUpdate);
-    passageAudio.addEventListener('ended', onPassageEnded);
-    passageAudio.addEventListener('loadedmetadata', () => {
-      document.getElementById('time-total').textContent = formatTime(passageAudio.duration);
-    });
-  }
-  if (passageAudio.paused) {
-    passageAudio.play();
-    document.getElementById('passage-play-btn').textContent = '⏸';
-    document.getElementById('passage-play-btn').classList.add('playing');
+  if (passagePlaying) {
+    pausePassage();
   } else {
-    passageAudio.pause();
-    document.getElementById('passage-play-btn').textContent = '▶';
-    document.getElementById('passage-play-btn').classList.remove('playing');
+    playFromLine(currentLineIdx);
   }
 }
 
-function onPassageTimeUpdate() {
-  const cur = passageAudio.currentTime;
-  const dur = passageAudio.duration || 18.5;
-  document.getElementById('progress-fill').style.width = (cur/dur*100) + '%';
-  document.getElementById('time-current').textContent = formatTime(cur);
-  highlightLine(cur);
+function playFromLine(idx) {
+  if (idx >= PASSAGE_LINES.length) {
+    stopPassage();
+    return;
+  }
+  currentLineIdx = idx;
+  passagePlaying = true;
+  document.getElementById('passage-play-btn').textContent = '⏸';
+  document.getElementById('passage-play-btn').classList.add('playing');
+
+  if (lineAudio) { lineAudio.pause(); lineAudio = null; }
+
+  highlightOnly(idx);
+
+  lineAudio = new Audio(PASSAGE_LINES[idx].src);
+  lineAudio.playbackRate = currentSpeed;
+  lineAudio.play();
+
+  lineAudio.addEventListener('timeupdate', updateProgress);
+  lineAudio.addEventListener('ended', () => {
+    markDone(idx);
+    playFromLine(idx + 1);
+  });
 }
 
-function onPassageEnded() {
+function pausePassage() {
+  passagePlaying = false;
+  if (lineAudio) lineAudio.pause();
+  document.getElementById('passage-play-btn').textContent = '▶';
+  document.getElementById('passage-play-btn').classList.remove('playing');
+}
+
+function stopPassage() {
+  passagePlaying = false;
+  lineAudio = null;
+  currentLineIdx = 0;
   document.getElementById('passage-play-btn').textContent = '▶';
   document.getElementById('passage-play-btn').classList.remove('playing');
   clearHighlights();
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('time-current').textContent = '0:00';
 }
 
-function highlightLine(sec) {
-  PASSAGE_LINES.forEach(l => {
+function updateProgress() {
+  if (!lineAudio || !totalDuration) return;
+  // Time elapsed = sum of completed lines + current line position
+  let elapsed = 0;
+  for (let i = 0; i < currentLineIdx; i++) elapsed += (lineDurations[i] || 0);
+  elapsed += lineAudio.currentTime;
+  document.getElementById('progress-fill').style.width = (elapsed / totalDuration * 100) + '%';
+  document.getElementById('time-current').textContent = formatTime(elapsed);
+}
+
+function highlightOnly(idx) {
+  PASSAGE_LINES.forEach((l, i) => {
     const el = document.getElementById(`line-${l.id}`);
     if (!el) return;
-    if (sec >= l.startSec && sec < l.endSec) {
-      el.classList.add('active'); el.classList.remove('done');
-    } else if (sec >= l.endSec) {
-      el.classList.remove('active'); el.classList.add('done');
-    } else {
-      el.classList.remove('active','done');
-    }
+    if (i === idx) { el.classList.add('active'); el.classList.remove('done'); }
+    else if (i < idx) { el.classList.remove('active'); el.classList.add('done'); }
+    else { el.classList.remove('active', 'done'); }
   });
+}
+
+function markDone(idx) {
+  const el = document.getElementById(`line-${PASSAGE_LINES[idx].id}`);
+  if (el) { el.classList.remove('active'); el.classList.add('done'); }
 }
 
 function clearHighlights() {
   PASSAGE_LINES.forEach(l => {
     const el = document.getElementById(`line-${l.id}`);
-    if (el) el.classList.remove('active','done');
+    if (el) el.classList.remove('active', 'done');
   });
 }
 
 function jumpToLine(id) {
-  const line = PASSAGE_LINES.find(l => l.id === id);
-  if (!line) return;
-  if (!passageAudio) togglePassage();
-  else {
-    passageAudio.currentTime = line.startSec;
-    if (passageAudio.paused) {
-      passageAudio.play();
-      document.getElementById('passage-play-btn').textContent = '⏸';
-      document.getElementById('passage-play-btn').classList.add('playing');
-    }
-  }
+  const idx = PASSAGE_LINES.findIndex(l => l.id === id);
+  if (idx < 0) return;
+  playFromLine(idx);
 }
 
 function seekPassage(e) {
-  if (!passageAudio) return;
+  if (!totalDuration) return;
   const bg = document.getElementById('progress-bg');
   const rect = bg.getBoundingClientRect();
-  passageAudio.currentTime = ((e.clientX - rect.left) / rect.width) * passageAudio.duration;
+  const targetSec = ((e.clientX - rect.left) / rect.width) * totalDuration;
+  // Find which line this falls in
+  let elapsed = 0;
+  for (let i = 0; i < PASSAGE_LINES.length; i++) {
+    const dur = lineDurations[i] || 0;
+    if (elapsed + dur >= targetSec) { playFromLine(i); return; }
+    elapsed += dur;
+  }
 }
 
-let currentSpeed = 1.0;
 function setSpeed(s) {
   currentSpeed = s;
-  if (passageAudio) passageAudio.playbackRate = s;
+  if (lineAudio) lineAudio.playbackRate = s;
   document.getElementById('speed-label').textContent = s + '×';
   document.querySelectorAll('.speed-btn').forEach(b => {
     b.classList.toggle('active', parseFloat(b.textContent.replace('×','')) === s);
@@ -428,6 +475,7 @@ function switchTab(name, btn) {
 renderPassageLines();
 renderVocabList();
 showAutoWord(0);
+preloadDurations();
 </script>
 </body>
 </html>
