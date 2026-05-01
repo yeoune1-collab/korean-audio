@@ -115,7 +115,6 @@ body { font-family: 'DM Sans','Noto Sans KR',sans-serif; background: var(--paper
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('passage',this)">📖 Passage</button>
     <button class="tab-btn" onclick="switchTab('sayit',this)">💬 Say It</button>
-    <button class="tab-btn" onclick="switchTab('vocab',this)">🔤 Vocabulary</button>
   </div>
 
   <!-- PASSAGE PANEL -->
@@ -165,33 +164,7 @@ body { font-family: 'DM Sans','Noto Sans KR',sans-serif; background: var(--paper
     </div>
   </div>
 
-  <!-- VOCAB PANEL -->
-  <div id="panel-vocab" class="panel">
-    <div class="vocab-controls">
-      <div class="vocab-mode-bar">
-        <div class="label">Vocabulary Audio</div>
-        <div class="mode-toggle">
-          <button class="mode-btn active" id="mode-auto-btn" onclick="setVocabMode('auto')">Auto</button>
-          <button class="mode-btn" id="mode-ind-btn" onclick="setVocabMode('individual')">Individual</button>
-        </div>
-      </div>
-      <div id="vocab-auto">
-        <div class="auto-display">
-          <div class="ko-word word-animate" id="auto-ko">—</div>
-          <div class="en-word" id="auto-en">Press play to start</div>
-          <div class="word-counter" id="auto-counter">0 / 9</div>
-        </div>
-        <div class="auto-controls">
-          <button class="auto-prev" onclick="autoPrev()">◀</button>
-          <button class="auto-play-btn" id="auto-play-btn" onclick="toggleAutoPlay()">▶</button>
-          <button class="auto-next" onclick="autoNext()">▶▶</button>
-        </div>
-      </div>
-      <div id="vocab-individual" style="display:none">
-        <div class="vocab-list" id="vocab-list"></div>
-      </div>
-    </div>
-  </div>
+
 
   <div class="back-bar"><a href="../../" class="back-link">← Back to Level 4</a></div>
 </div>
@@ -518,6 +491,7 @@ function playSayItem(idx) {
   }
   sayIdx = idx;
   sayAudio = new Audio(SAY_IT[idx].src);
+  sayAudio.playbackRate = 0.75;
   document.getElementById(`srow-${idx}`).classList.add('playing');
   const btn = document.getElementById(`sbtn-${idx}`);
   btn.classList.add('playing'); btn.textContent = '■';
