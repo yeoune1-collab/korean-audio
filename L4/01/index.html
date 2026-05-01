@@ -114,6 +114,7 @@ body { font-family: 'DM Sans','Noto Sans KR',sans-serif; background: var(--paper
 <div class="container">
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('passage',this)">📖 Passage</button>
+    <button class="tab-btn" onclick="switchTab('sayit',this)">💬 Say It</button>
     <button class="tab-btn" onclick="switchTab('vocab',this)">🔤 Vocabulary</button>
   </div>
 
@@ -125,7 +126,7 @@ body { font-family: 'DM Sans','Noto Sans KR',sans-serif; background: var(--paper
           <div class="label">Part 3 · Active Reading</div>
           <div class="title">Full Passage Audio</div>
         </div>
-        <div class="speed-badge" id="speed-label">1.0×</div>
+        <div class="speed-badge" id="speed-label">0.75×</div>
       </div>
       <div class="audio-controls">
         <button class="play-btn" id="passage-play-btn" onclick="togglePassage()">▶</button>
@@ -139,12 +140,28 @@ body { font-family: 'DM Sans','Noto Sans KR',sans-serif; background: var(--paper
           </div>
         </div>
         <div class="speed-controls">
-          <button class="speed-btn" onclick="setSpeed(0.75)">×.75</button>
-          <button class="speed-btn active" onclick="setSpeed(1.0)">×1</button>
+          <button class="speed-btn active" onclick="setSpeed(0.75)">×.75</button>
+          <button class="speed-btn" onclick="setSpeed(1.0)">×1</button>
           <button class="speed-btn" onclick="setSpeed(1.25)">×1.25</button>
         </div>
       </div>
       <div class="passage-lines" id="passage-lines"></div>
+    </div>
+  </div>
+
+  <!-- SAY IT PANEL -->
+  <div id="panel-sayit" class="panel">
+    <div class="player-card">
+      <div class="player-header">
+        <div>
+          <div class="label">Part 2 · Say It Review</div>
+          <div class="title">Say It Aloud</div>
+        </div>
+      </div>
+      <div style="padding:16px 20px;font-size:.8rem;color:var(--muted);border-bottom:1px solid var(--border)">
+        📖 Scan → Listen → Say aloud × 3 → Cover English → Say in Korean only
+      </div>
+      <div id="sayit-list" style="padding:12px 16px;"></div>
     </div>
   </div>
 
@@ -184,7 +201,6 @@ body { font-family: 'DM Sans','Noto Sans KR',sans-serif; background: var(--paper
 const BASE = 'https://yeoune1-collab.github.io/korean-audio/L4/01/audio';
 
 // ── PASSAGE DATA ─────────────────────────────────────────────────────────
-// startSec / endSec: update after measuring actual MP3 durations
 const PASSAGE_LINES = [
   { id:1, text:'한국에서는 카페가',                           src:`${BASE}/passage_01.mp3` },
   { id:2, text:'단순히 커피를 마시는 곳이 아닙니다.',           src:`${BASE}/passage_02.mp3` },
@@ -193,6 +209,15 @@ const PASSAGE_LINES = [
   { id:5, text:'여유로운 시간을 보냅니다.',                     src:`${BASE}/passage_05.mp3` },
 ];
 const PASSAGE_FULL_SRC = `${BASE}/passage_full.mp3`;
+
+// ── SAY IT DATA ───────────────────────────────────────────────────────────
+const SAY_IT = [
+  { id:1, ko:'저는 카페에서 커피를 마셔요.',            en:'I drink coffee at a cafe.',              src:`${BASE}/say_01.mp3` },
+  { id:2, ko:'자연 풍경이 정말 아름다워요.',             en:'The natural scenery is really beautiful.', src:`${BASE}/say_02.mp3` },
+  { id:3, ko:'저는 사진을 찍어요.',                    en:'I take photos.',                          src:`${BASE}/say_03.mp3` },
+  { id:4, ko:'많은 사람들이 카페에서 시간을 보내요.',    en:'Many people spend time at cafes.',         src:`${BASE}/say_04.mp3` },
+  { id:5, ko:'호수 근처 카페가 정말 좋아요.',           en:'The cafe near the lake is really nice.',   src:`${BASE}/say_05.mp3` },
+];
 
 const VOCAB = [
   { ko:'카페',     en:'cafe',             src:`${BASE}/v_카페.mp3`    },
@@ -210,7 +235,7 @@ const VOCAB = [
 let currentLineIdx = 0;   // index into PASSAGE_LINES
 let lineAudio = null;
 let passagePlaying = false;
-let currentSpeed = 1.0;
+let currentSpeed = 0.75;
 
 // Pre-load durations so progress bar works
 const lineDurations = new Array(PASSAGE_LINES.length).fill(null);
@@ -463,6 +488,47 @@ function playVocabItem(idx) {
   });
 }
 
+// ── SAY IT PLAYER ─────────────────────────────────────────────────────────
+let sayAudio = null;
+let sayIdx = -1;
+
+function renderSayItList() {
+  document.getElementById('sayit-list').innerHTML =
+    SAY_IT.map((s,i) =>
+      `<div class="vocab-row" id="srow-${i}" style="flex-direction:column;align-items:flex-start;gap:4px;cursor:pointer" onclick="playSayItem(${i})">
+         <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
+           <div>
+             <div class="ko" style="font-size:1.1rem">${s.ko}</div>
+             <div class="en" style="font-size:.8rem;color:var(--muted);margin-top:2px">${s.en}</div>
+           </div>
+           <button class="vocab-play-btn" id="sbtn-${i}">▶</button>
+         </div>
+       </div>`
+    ).join('');
+}
+
+function playSayItem(idx) {
+  if (sayAudio) {
+    sayAudio.pause();
+    const prev = document.getElementById(`srow-${sayIdx}`);
+    const prevBtn = document.getElementById(`sbtn-${sayIdx}`);
+    if (prev) prev.classList.remove('playing');
+    if (prevBtn) { prevBtn.classList.remove('playing'); prevBtn.textContent = '▶'; }
+    if (sayIdx === idx) { sayIdx = -1; sayAudio = null; return; }
+  }
+  sayIdx = idx;
+  sayAudio = new Audio(SAY_IT[idx].src);
+  document.getElementById(`srow-${idx}`).classList.add('playing');
+  const btn = document.getElementById(`sbtn-${idx}`);
+  btn.classList.add('playing'); btn.textContent = '■';
+  sayAudio.play();
+  sayAudio.addEventListener('ended', () => {
+    document.getElementById(`srow-${idx}`).classList.remove('playing');
+    btn.classList.remove('playing'); btn.textContent = '▶';
+    sayIdx = -1; sayAudio = null;
+  });
+}
+
 // ── TABS ──────────────────────────────────────────────────────────────────
 function switchTab(name, btn) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -474,6 +540,7 @@ function switchTab(name, btn) {
 // ── INIT ──────────────────────────────────────────────────────────────────
 renderPassageLines();
 renderVocabList();
+renderSayItList();
 showAutoWord(0);
 preloadDurations();
 </script>
