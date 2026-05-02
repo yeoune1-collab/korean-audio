@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Listen — L3 · 01</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1a1a2e;--paper:#f7f6f2;--accent:#4a6fa5;--accent2:#e07b54;--border:#d8d6ce;--muted:#7a7a8a;--highlight:#fde68a;--green:#5c9e6e;--r:12px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans','Noto Sans KR',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh}
+.topnav{background:var(--ink);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.breadcrumb{font-size:.72rem;letter-spacing:.1em;opacity:.55;text-transform:uppercase}
+.lesson-title{font-size:.95rem;font-weight:700;margin-top:2px}
+.close-btn{background:rgba(255,255,255,.12);border:none;color:#fff;font-size:.78rem;padding:6px 14px;border-radius:20px;cursor:pointer}
+.container{max-width:680px;margin:0 auto;padding:32px 20px 80px}
+.card{background:#fff;border-radius:var(--r);border:1px solid var(--border);box-shadow:0 2px 12px rgba(26,26,46,.08);overflow:hidden;margin-bottom:20px}
+.card-header{background:var(--accent);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+.h-label{font-size:.72rem;letter-spacing:.1em;opacity:.75;text-transform:uppercase}
+.h-title{font-size:1rem;font-weight:700;margin-top:2px}
+.spd-badge{background:rgba(255,255,255,.2);font-size:.72rem;padding:4px 10px;border-radius:20px;font-family:monospace}
+.controls{padding:20px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border)}
+.play-btn{width:52px;height:52px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:1.4rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(74,111,165,.35);transition:transform .15s,background .15s}
+.play-btn:hover{transform:scale(1.06)}
+.play-btn.playing{background:var(--accent2)}
+.prog-wrap{flex:1}
+.prog-bg{width:100%;height:6px;background:var(--border);border-radius:3px;cursor:pointer;margin-bottom:6px}
+.prog-fill{height:100%;background:var(--accent);border-radius:3px;width:0%;transition:width .1s linear}
+.times{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);font-family:monospace}
+.spd-btns{display:flex;gap:6px;flex-shrink:0}
+.spd-btn{background:var(--paper);border:1px solid var(--border);border-radius:6px;font-size:.72rem;font-family:monospace;padding:4px 8px;cursor:pointer;color:var(--muted)}
+.spd-btn.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+.slist{padding:12px 16px}
+.srow{display:flex;gap:12px;padding:10px 12px;border-radius:8px;margin-bottom:6px;cursor:pointer;align-items:flex-start;transition:background .2s}
+.srow:hover{background:var(--paper)}
+.srow.active{background:var(--highlight)}
+.srow.done .snum{color:var(--green)}
+.snum{font-size:.72rem;font-family:monospace;color:var(--accent);font-weight:700;padding-top:3px;flex-shrink:0;width:22px}
+.stxt{font-size:1.1rem;font-weight:500;line-height:1.7;font-family:'Noto Sans KR',sans-serif}
+.back-bar{text-align:center;padding-top:20px}
+.back-link{font-size:.82rem;color:var(--accent);text-decoration:none;font-weight:600}
+@keyframes pulse{0%,100%{background:#fde68a}50%{background:#fcd34d}}
+.srow.active{animation:pulse 1.8s infinite}
+</style>
+</head>
+<body>
+<div class="topnav">
+  <div><div class="breadcrumb">Korean · Level 3 · Part A</div><div class="lesson-title">Lesson 01 — 은/는 · 이에요/예요</div></div>
+  <button class="close-btn" onclick="history.back()">✕ Close</button>
+</div>
+<div class="container">
+  <div class="card">
+    <div class="card-header">
+      <div><div class="h-label">Part A · Listen &amp; Repeat</div><div class="h-title">All Sentences</div></div>
+      <span class="spd-badge" id="spd-lbl">0.85×</span>
+    </div>
+    <div class="controls">
+      <button class="play-btn" id="pbtn" onclick="toggle()">▶</button>
+      <div class="prog-wrap">
+        <div class="prog-bg"><div class="prog-fill" id="pfill"></div></div>
+        <div class="times"><span id="tcur">0:00</span><span id="ttot">0:00</span></div>
+      </div>
+      <div class="spd-btns">
+        <button class="spd-btn" onclick="setSpd(0.75)">×.75</button>
+        <button class="spd-btn active" onclick="setSpd(0.85)">×.85</button>
+        <button class="spd-btn" onclick="setSpd(1.0)">×1</button>
+      </div>
+    </div>
+    <div class="slist" id="slist"></div>
+  </div>
+  <div class="back-bar"><a href="../../" class="back-link">← Level 3</a></div>
+</div>
+<script>
+const D=[{"text":"선생님은 한국 사람이에요","src":"https://yeoune1-collab.github.io/korean-audio/L3/01/partA_01.mp3"},{"text":"가수는 한국 사람이에요","src":"https://yeoune1-collab.github.io/korean-audio/L3/01/partA_02.mp3"},{"text":"이름은 민준이에요","src":"https://yeoune1-collab.github.io/korean-audio/L3/01/partA_03.mp3"},{"text":"이름은 미자예요","src":"https://yeoune1-collab.github.io/korean-audio/L3/01/partA_04.mp3"},{"text":"이것은 펜이에요","src":"https://yeoune1-collab.github.io/korean-audio/L3/01/partA_05.mp3"},{"text":"이것은 지우개예요","src":"https://yeoune1-collab.github.io/korean-audio/L3/01/partA_06.mp3"},{"text":"이것은 사과예요","src":"https://yeoune1-collab.github.io/korean-audio/L3/01/partA_07.mp3"},{"text":"이것은 포도예요","src":"https://yeoune1-collab.github.io/korean-audio/L3/01/partA_08.mp3"},{"text":"이곳은 서울이에요","src":"https://yeoune1-collab.github.io/korean-audio/L3/01/partA_09.mp3"},{"text":"이곳은 교실이에요","src":"https://yeoune1-collab.github.io/korean-audio/L3/01/partA_10.mp3"},{"text":"저곳은 도서관이에요","src":"https://yeoune1-collab.github.io/korean-audio/L3/01/partA_11.mp3"},{"text":"저곳은 바다예요","src":"https://yeoune1-collab.github.io/korean-audio/L3/01/partA_12.mp3"},{"text":"저는 학생이에요","src":"https://yeoune1-collab.github.io/korean-audio/L3/01/partA_13.mp3"},{"text":"수잔은 간호사예요","src":"https://yeoune1-collab.github.io/korean-audio/L3/01/partA_14.mp3"},{"text":"취미는 수영이에요","src":"https://yeoune1-collab.github.io/korean-audio/L3/01/partA_15.mp3"},{"text":"직업은 요리사예요","src":"https://yeoune1-collab.github.io/korean-audio/L3/01/partA_16.mp3"}];
+let i=0,on=false,spd=0.85,au=null,dur=new Array(D.length).fill(null),loaded=0,tot=0;
+function fmt(s){return isNaN(s)?'0:00':Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');}
+function render(){document.getElementById('slist').innerHTML=D.map((s,j)=>`<div class="srow" id="r${j}" onclick="jump(${j})"><span class="snum">${j+1}.</span><span class="stxt">${s.text}</span></div>`).join('');}
+function preload(){D.forEach((s,j)=>{const a=new Audio(s.src);a.addEventListener('loadedmetadata',()=>{dur[j]=a.duration;loaded++;if(loaded===D.length){tot=dur.reduce((a,b)=>a+b,0);document.getElementById('ttot').textContent=fmt(tot);}});});}
+function hi(j){D.forEach((_,k)=>{const r=document.getElementById('r'+k);if(!r)return;r.classList.toggle('active',k===j);if(k<j)r.classList.add('done');else if(k>j)r.classList.remove('active','done');});}
+function upd(){if(!au||!tot)return;let e=0;for(let k=0;k<i;k++)e+=(dur[k]||0);e+=au.currentTime;document.getElementById('pfill').style.width=(e/tot*100)+'%';document.getElementById('tcur').textContent=fmt(e);}
+function playFrom(j){if(j>=D.length){stop();return;}i=j;on=true;document.getElementById('pbtn').textContent='⏸';document.getElementById('pbtn').classList.add('playing');if(au){au.pause();au=null;}hi(j);au=new Audio(D[j].src);au.playbackRate=spd;au.play();au.addEventListener('timeupdate',upd);au.addEventListener('ended',()=>playFrom(j+1));}
+function pause(){on=false;if(au)au.pause();document.getElementById('pbtn').textContent='▶';document.getElementById('pbtn').classList.remove('playing');}
+function stop(){on=false;au=null;i=0;document.getElementById('pbtn').textContent='▶';document.getElementById('pbtn').classList.remove('playing');D.forEach((_,k)=>{const r=document.getElementById('r'+k);if(r)r.classList.remove('active','done');});document.getElementById('pfill').style.width='0%';document.getElementById('tcur').textContent='0:00';}
+function toggle(){on?pause():playFrom(i);}
+function jump(j){playFrom(j);}
+function setSpd(s){spd=s;if(au)au.playbackRate=s;document.getElementById('spd-lbl').textContent=s+'×';document.querySelectorAll('.spd-btn').forEach(b=>b.classList.toggle('active',parseFloat(b.textContent.replace('×',''))===s));}
+render();preload();
+</script>
+</body>
+</html>
